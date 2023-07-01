@@ -13,7 +13,7 @@ export const useState = (initialState) => {
     })
   }
 
-  const stateObject = {
+  return {
     get value() {
       return getState()
     },
@@ -27,11 +27,18 @@ export const useState = (initialState) => {
       boundElements.add(element)
     },
   }
-
-  return [stateObject, setState]
 }
 
-export const bindEventListeners = (element, props) => {
+const bindEventListener = (element, eventName, handler) => {
+  if (element && typeof handler === "function") {
+    element.addEventListener(eventName, (event) => {
+      event.preventDefault()
+      handler(event)
+    })
+  }
+}
+
+const bindEventListeners = (element, props) => {
   if (!props || typeof props !== "object") return
 
   const eventElements = element.querySelectorAll("[data-event]")
@@ -40,79 +47,78 @@ export const bindEventListeners = (element, props) => {
     const eventType = eventElement.getAttribute("data-event")
     const eventHandlerName = eventElement.getAttribute("data-eventname")
 
-    if (
-      eventType &&
-      eventHandlerName &&
-      typeof props[eventHandlerName] === "function"
-    ) {
-      eventElement.addEventListener(eventType, (event) => {
-        event.preventDefault()
-        props[eventHandlerName](event)
-      })
+    bindEventListener(eventElement, eventType, props[eventHandlerName])
+  })
+}
+
+const bindEventListenerToAttribute = (
+  target,
+  attribute,
+  eventName,
+  handler
+) => {
+  const eventElements = Array.from(target.querySelectorAll(`*[${attribute}]`))
+  eventElements.forEach((eventElement) => {
+    eventElement.addEventListener(eventName, handler)
+    eventElement.setAttribute("data-rendered", "true")
+  })
+}
+
+const applyPropsToTarget = (target, props) => {
+  Object.keys(props).forEach((key) => {
+    if (key.startsWith("on") && typeof props[key] === "function") {
+      const eventName = key.slice(2).toLowerCase()
+      bindEventListenerToAttribute(target, "data-listen", eventName, props[key])
+    } else {
+      target.setAttribute(key, props[key])
     }
   })
 }
 
-export const createElement = (template, props, ...children) => {
-  if (typeof template === "function") {
-    return template(props)
+const processNode = (node, props) => {
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    bindEventListeners(node, props)
+    const stateName = node.getAttribute("data-state")
+    if (node.hasAttribute("data-state") && props[stateName]) {
+      node.textContent = props[stateName].value
+      props[stateName].bindElement(node)
+    }
   }
 
-  if (typeof template !== "string") {
-    throw new Error("Invalid element template. Expected a string.")
+  if (node.childNodes && node.childNodes.length) {
+    Array.from(node.childNodes).forEach((childNode) =>
+      processNode(childNode, props)
+    )
   }
+}
+
+export const createElement = (template, props, ...children) => {
+  if (typeof template === "function") return template(props)
+  if (typeof template !== "string")
+    throw new Error("Invalid element template. Expected a string.")
 
   const element = document.createElement("template")
   element.innerHTML = template.trim()
   const fragment = element.content.cloneNode(true)
-
-  const processNode = (node) => {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      bindEventListeners(node, props)
-
-      if (node.hasAttribute("data-state")) {
-        const stateName = node.getAttribute("data-state")
-        if (props[stateName]) {
-          node.textContent = props[stateName].value
-          props[stateName].bindElement(node)
-        }
-      }
-    }
-
-    if (node.childNodes && node.childNodes.length) {
-      Array.from(node.childNodes).forEach(processNode)
-    }
-  }
-
-  processNode(fragment)
+  processNode(fragment, props)
 
   if (props) {
     const target = fragment.querySelector("*")
-    Object.keys(props).forEach((key) => {
-      if (key.startsWith("on") && typeof props[key] === "function") {
-        const eventName = key.slice(2).toLowerCase()
-        Array.from(target.querySelectorAll("*"))
-          .filter((eventElement) => !eventElement.hasAttribute("data-rendered"))
-          .forEach((eventElement) => {
-            eventElement.addEventListener(eventName, props[key])
-            eventElement.setAttribute("data-rendered", "true")
-          })
-      } else {
-        target.setAttribute(key, props[key])
-      }
-    })
+    applyPropsToTarget(target, props)
   }
 
   if (children) {
+    const target = fragment.querySelector("*")
     children.forEach((child) => {
       const node =
         typeof child === "string" ? document.createTextNode(child) : child
-      fragment.querySelector("*").appendChild(node)
+      target.appendChild(node)
     })
   }
 
   return fragment
 }
+
 export const createRouter = (routes, app, nav = null) => {
   const matchPath = (currentPath, routePath) => {
     const currentParts = currentPath.split("/")
@@ -146,12 +152,11 @@ export const createRouter = (routes, app, nav = null) => {
     app.innerHTML = ""
 
     if (nav) {
-      const navElement = nav()
-      app.appendChild(navElement)
+      app.appendChild(nav())
     }
 
     const homeRoute = routes.find((route) => route.path === "/")
-    if (path === "/") {
+    if (path === "/" || path === "") {
       if (homeRoute) {
         const homeComponent = homeRoute.component()
         app.appendChild(homeComponent)
@@ -174,22 +179,44 @@ export const createRouter = (routes, app, nav = null) => {
           if (component) {
             app.appendChild(component)
           } else {
-            console.error("Component not found")
+            app.innerHTML = ""
+            app.appendChild(nav())
+            app.appendChild(createElement("<h1>404 Not Found.</h1>"))
+            console.error(
+              "Component not found",
+              route,
+              component,
+              componentProps,
+              params
+            )
           }
         } else {
           const routeComponent = route.component()
           if (routeComponent) {
             app.appendChild(routeComponent)
           } else {
-            console.error("Component not found")
+            app.innerHTML = ""
+            app.appendChild(nav())
+            app.appendChild(createElement("<h1>404 Not Found.</h1>"))
+            console.error("Component not found", route, routeComponent)
           }
         }
       } else {
-        console.error("this is what we're asking for:", currentPath)
-        console.error("this is what we have:", routes)
-        console.error("maybe this is the problem:", route)
+        console.log("Not found", currentPath)
+        const notFoundRoute = routes.find((route) => route.path === "*")
+        if (notFoundRoute) {
+          const notFoundComponent = notFoundRoute.component()
+          app.appendChild(notFoundComponent)
+        }
+        console.error("Component not found", route)
+        console.log("This is what we have", routes)
+        console.log("This is what we might need", notFoundRoute)
       }
     })
+
+    if (path !== location.pathname) {
+      history.pushState({}, "", path)
+    }
   }
 
   const navigateHandler = (event) => {
@@ -200,5 +227,10 @@ export const createRouter = (routes, app, nav = null) => {
   navigation.addEventListener("navigate", navigateHandler)
 
   Router(location.pathname)
+
+  Router.refresh = () => {
+    Router(location.pathname)
+  }
+
   return Router
 }

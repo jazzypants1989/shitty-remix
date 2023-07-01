@@ -9,41 +9,32 @@ const teamData = [
 ]
 
 const Counter = () => {
-  const [counterOne, setCounterOne] = useState(0)
-  const [counterTwo, setCounterTwo] = useState(0)
+  const countOne = useState(0)
+  const countTwo = useState(0)
 
-  const incrementOne = () => {
-    setCounterOne(counterOne.value + 1)
-    console.log(counterOne.value)
-  }
+  const incrementOne = () => (countOne.value += 1)
 
-  const decrementOne = () => {
-    setCounterOne(counterOne.value - 1)
-    console.log(counterOne.value)
-  }
+  const decrementOne = () => (countOne.value -= 1)
 
-  const incrementTwo = () => {
-    setCounterTwo(counterTwo.value + 2)
-  }
+  const incrementTwo = () => (countTwo.value += 2)
 
-  const decrementTwo = () => {
-    setCounterTwo(counterTwo.value - 2)
-  }
+  const decrementTwo = () => (countTwo.value -= 2)
 
   const render = () =>
     createElement(
       `<div>
-        <h2>Counter</h2>
-        <p data-state="counterOne">Counter One: ${counterOne.value}</p>
-        <button data-event="click" data-eventname="incrementOne">+1</button>
+        <h2>Counters!!</h2>
         <button data-event="click" data-eventname="decrementOne">-1</button>
-        <p data-state="counterTwo">Counter Two: ${counterTwo.value}</p>
-        <button data-event="click" data-eventname="incrementTwo">+2</button>
+        <p data-state="countOne"></p>
+        <button data-event="click" data-eventname="incrementOne">+1</button>
+        <hr />
         <button data-event="click" data-eventname="decrementTwo">-2</button>
+        <p data-state="countTwo"></p>
+        <button data-event="click" data-eventname="incrementTwo">+2</button>
       </div>`,
       {
-        counterOne,
-        counterTwo,
+        countOne,
+        countTwo,
         incrementOne,
         decrementOne,
         incrementTwo,
@@ -69,6 +60,9 @@ const Nav = () =>
     <div>
       <a href="/">Home</a>
       <a href="/about">About</a>
+      <a href="/search">Search</a>
+      <a href="/mood">Mood</a>
+      <a href="/example/Wow!!/Cool!!">Example</a>
     </div>
   `)
 
@@ -115,6 +109,103 @@ const TeamMember = (props) => {
   `)
 }
 
+const SearchComponent = () => {
+  const render = () =>
+    createElement(
+      `<div>
+        <h2>Search:</h2>
+        <input type="text" data-listen placeholder="Type your search term..."/>
+        <p id="searchDisplay"></p>
+      </div>`,
+      {
+        onInput: (event) => {
+          const searchTerm = event.target.value
+          const searchDisplay = document.querySelector("#searchDisplay")
+          if (searchDisplay) {
+            searchDisplay.innerText = searchTerm
+          }
+        },
+      }
+    )
+
+  return render()
+}
+
+const MoodComponent = () => {
+  const mood = useState("happy")
+
+  mood.subscribe((newMood) => {
+    const moodElement = document.querySelector("#moodText")
+    if (moodElement) {
+      if (newMood === "happy") {
+        moodElement.style.color = "green"
+      } else if (newMood === "sad") {
+        moodElement.style.color = "blue"
+      } else {
+        moodElement.style.color = "black"
+      }
+    }
+  })
+
+  const setMoodToHappy = () => (mood.value = "happy")
+
+  const setMoodToSad = () => (mood.value = "sad")
+
+  const render = () =>
+    createElement(
+      `<div>
+        <h2 id="moodText">I'm currently feeling <span data-state="mood">${mood.value}</span></h2>
+        <button data-listen>Happy</button>
+        <button data-listen>Sad</button>
+      </div>`,
+      {
+        onClick: (event) => {
+          if (event.target.innerText === "Happy") {
+            setMoodToHappy()
+          } else if (event.target.innerText === "Sad") {
+            setMoodToSad()
+          }
+        },
+        mood,
+      }
+    )
+
+  return render()
+}
+
+const Example = (props) => {
+  if (!props?.thatOne && !props?.thisOne) {
+    return createElement(`
+<div>
+  <h1>Example Page</h1>
+  <strong>Nothing to see here.</strong>
+</div>
+`)
+  } else if (!props?.thisOne) {
+    return createElement(`
+<div>
+  <h1>Example Page</h1>
+  <p>That: ${props?.thatOne}</p>
+</div>
+`)
+  } else if (!props?.thatOne) {
+    return createElement(`
+<div>
+  <h1>Example Page</h1>
+  <p>This: ${props?.thisOne}</p>
+</div>
+`)
+  } else {
+    return createElement(`
+<div>
+  <h1>Example Page</h1>
+  <p>This: ${props?.thisOne}</p>
+  <p>That: ${props?.thatOne}</p>
+</div>
+`)
+  }
+}
+
 const routes = [
   { path: "/", component: Home },
   { path: "/about", component: About },
@@ -124,6 +215,28 @@ const routes = [
     path: "/about/team/:id",
     component: TeamMember,
     loader: (params) => findTeamMember(params.id),
+  },
+  { path: "/search", component: SearchComponent },
+  { path: "/mood", component: MoodComponent },
+  {
+    path: "/example",
+    component: Example,
+    loader: (params) => params,
+  },
+  {
+    path: "/example/:thisOne",
+    component: Example,
+    loader: (params) => params,
+  },
+  {
+    path: "/example/:thatOne",
+    component: Example,
+    loader: (params) => params,
+  },
+  {
+    path: "/example/:thisOne/:thatOne",
+    component: Example,
+    loader: (params) => params,
   },
 ]
 
