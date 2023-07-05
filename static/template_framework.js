@@ -216,6 +216,26 @@ export const createElement = (template, props, ...children) => {
   return fragment
 }
 
+export const createContainer = (type, factory, state) => {
+  const container = document.createElement(type)
+
+  const updateContainer = () => {
+    container.innerHTML = "" // Clear existing elements
+    const elements = factory()
+    if (Array.isArray(elements)) {
+      elements.forEach((element) => container.appendChild(element))
+    } else if (elements) {
+      container.appendChild(elements)
+    }
+  }
+
+  state.subscribe(updateContainer)
+
+  updateContainer()
+
+  return container
+}
+
 export const createRouter = (routes, app, nav = null) => {
   const matchPath = (currentPath, routePath) => {
     const currentParts = currentPath.split("/")

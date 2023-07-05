@@ -1,4 +1,4 @@
-import { createElement, useState } from "./template_framework.js"
+import { createContainer, createElement, useState } from "./template_framework.js"
 const generateId = () => Math.random().toString(36).substring(2, 15)
 
 const loadState = () => {
@@ -54,7 +54,6 @@ const Todo = ({ id, text, completed, todos }) => {
       id,
       text,
       completed,
-      todos,
       toggleTodo,
       removeTodo,
       changeTodoText,
@@ -62,44 +61,11 @@ const Todo = ({ id, text, completed, todos }) => {
   )
 }
 
-const TodoList = (todos) => {
-  const listContainer = document.createElement("ul")
-
-  const updateTodoList = () => {
-    listContainer.innerHTML = "" // clear existing elements
-
-    Object.keys(todos.value).forEach((key) => {
-      const todoNode = Todo({
-        id: key,
-        text: todos.value[key].text,
-        completed: todos.value[key].completed,
-        todos: todos,
-      })
-      listContainer.appendChild(todoNode)
-    })
-  }
-
-  todos.subscribe(updateTodoList) // subscribe to todos state changes
-
-  // initial render
-  updateTodoList()
-
-  return createElement(
-    `<div>
-      <h1>Todo List</h1>
-      <div data-slot="listContainer"></div>
-    </div>`,
-    {
-      listContainer,
-    }
-  )
-}
-
 const App = () => {
   const todos = useState(loadState())
 
-  const addTodo = (event) => {
-    const text = event.target.previousElementSibling.value
+  const addTodo = () => {
+    const text = todoInput.value
     const newTodo = {
       text,
       completed: false,
@@ -108,16 +74,27 @@ const App = () => {
     saveState(todos.value)
   }
 
+  const renderTodos = () => Object.keys(todos.value).map((key) =>
+      Todo({
+        id: key,
+        text: todos.value[key].text,
+        completed: todos.value[key].completed,
+        todos: todos,
+      })
+    )
+  
+  const TodoList = createContainer("ul", renderTodos, todos)
+
   return createElement(
     `<div>
-      <input type="text" placeholder="Add a todo" />
+      <input type="text" placeholder="Add a todo" id="todoInput" />
       <button data-event="click" data-eventname="addTodo">Add Todo</button>
       <div data-slot="TodoList"></div>
     </div>`,
     {
       todos,
       addTodo,
-      TodoList: TodoList(todos),
+      TodoList
     }
   )
 }
