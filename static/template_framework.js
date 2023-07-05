@@ -1,16 +1,45 @@
 export const useState = (initialState) => {
-  let state = initialState
+  let state = Array.isArray(initialState) ? [...initialState] : initialState
   const listeners = []
   const boundElements = new Set()
 
-  const getState = () => state
+  const getState = () => {
+    if (Array.isArray(state)) {
+      return [...state]
+    } else if (typeof state === "object") {
+      return { ...state }
+    }
+    return state
+  }
 
   const setState = (newValue) => {
-    state = newValue
-    listeners.forEach((listener) => listener(state))
-    boundElements.forEach((element) => {
-      element.textContent = state
-    })
+    if (
+      (Array.isArray(state) && !compareArray(state, newValue)) ||
+      (typeof state === "object" && !compareObjects(state, newValue))
+    ) {
+      console.log("Updating state", state, newValue)
+      state = newValue
+      listeners.forEach((listener) => listener(state))
+      boundElements.forEach((element) => {
+        renderArrayOrObject(element, state)
+      })
+    } else if (state !== newValue) {
+      console.log("Updating state", state, newValue)
+      state = newValue
+      listeners.forEach((listener) => listener(state))
+      boundElements.forEach((element) => {
+        element.textContent = state
+      })
+    }
+  }
+
+  // Helper functions to compare arrays and objects.
+  const compareArray = (arr1, arr2) => {
+    return JSON.stringify(arr1) === JSON.stringify(arr2)
+  }
+
+  const compareObjects = (obj1, obj2) => {
+    return JSON.stringify(obj1) === JSON.stringify(obj2)
   }
 
   return {
@@ -29,10 +58,34 @@ export const useState = (initialState) => {
   }
 }
 
+const renderArrayOrObject = (element, value) => {
+  element.innerHTML = ""
+
+  const renderNode = (node, parentNode) => {
+    if (Array.isArray(node)) {
+      node.forEach((item) => {
+        const childNode = document.createElement("div")
+        renderNode(item, childNode)
+        parentNode.appendChild(childNode)
+      })
+    } else if (typeof node === "object") {
+      Object.keys(node).forEach((key) => {
+        const childNode = document.createElement("div")
+        childNode.textContent = `${key}:`
+        renderNode(node[key], childNode)
+        parentNode.appendChild(childNode)
+      })
+    } else {
+      parentNode.textContent = node
+    }
+  }
+
+  renderNode(value, element)
+}
+
 const bindEventListener = (element, eventName, handler) => {
   if (element && typeof handler === "function") {
     element.addEventListener(eventName, (event) => {
-      event.preventDefault()
       handler(event)
     })
   }
@@ -60,7 +113,6 @@ const bindEventListenerToAttribute = (
   const eventElements = Array.from(target.querySelectorAll(`*[${attribute}]`))
   eventElements.forEach((eventElement) => {
     eventElement.addEventListener(eventName, handler)
-    eventElement.setAttribute("data-rendered", "true")
   })
 }
 
@@ -80,7 +132,12 @@ const processNode = (node, props) => {
     bindEventListeners(node, props)
     const stateName = node.getAttribute("data-state")
     if (node.hasAttribute("data-state") && props[stateName]) {
-      node.textContent = props[stateName].value
+      const stateValue = props[stateName].value
+      if (Array.isArray(stateValue) || typeof stateValue === "object") {
+        renderArrayOrObject(node, stateValue)
+      } else {
+        node.textContent = stateValue
+      }
       props[stateName].bindElement(node)
     }
   }
@@ -90,6 +147,32 @@ const processNode = (node, props) => {
       processNode(childNode, props)
     )
   }
+}
+
+const processSlots = (fragment, props) => {
+  const slotElements = Array.from(fragment.querySelectorAll("[data-slot]"))
+  slotElements.forEach((slotElement) => {
+    const slotName = slotElement.getAttribute("data-slot")
+    const slotContent = props[slotName]
+    if (slotContent) {
+      slotElement.innerHTML = ""
+      if (Array.isArray(slotContent)) {
+        slotContent.forEach((content) => {
+          const node =
+            typeof content === "string"
+              ? document.createTextNode(content)
+              : content
+          slotElement.appendChild(node)
+        })
+      } else {
+        const node =
+          typeof slotContent === "string"
+            ? document.createTextNode(slotContent)
+            : slotContent
+        slotElement.appendChild(node)
+      }
+    }
+  })
 }
 
 export const createElement = (template, props, ...children) => {
@@ -104,7 +187,9 @@ export const createElement = (template, props, ...children) => {
 
   if (props) {
     const target = fragment.querySelector("*")
+
     applyPropsToTarget(target, props)
+    processSlots(fragment, props)
   }
 
   if (children) {
@@ -220,6 +305,7 @@ export const createRouter = (routes, app, nav = null) => {
   }
 
   const navigateHandler = (event) => {
+    if (shouldNotIntercept(event)) return
     const { pathname } = new URL(event.destination.url)
     event.intercept({ handler: () => Router(pathname) })
   }
@@ -232,5 +318,22 @@ export const createRouter = (routes, app, nav = null) => {
     Router(location.pathname)
   }
 
+  Router.push = (path) => {
+    navigation.navigate(path)
+  }
+
+  Router.replace = (path) => {
+    navigation.navigate(path, { history: "replace" })
+  }
+
   return Router
+}
+
+function shouldNotIntercept(event) {
+  return (
+    !event.canIntercept ||
+    event.hashChange ||
+    event.downloadRequest ||
+    event.formData
+  )
 }

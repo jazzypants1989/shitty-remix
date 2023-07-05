@@ -14,7 +14,7 @@ const routes = [
 ]
 
 const app = document.getElementById("app")
-const [todoList, setTodoList] = useState([])
+const todoList = useState([])
 const Router = createRouter(routes, app, nav)
 
 function Home() {
@@ -34,7 +34,7 @@ function Home() {
         <button data-event="click" data-eventname="goToCreate">Create Todo</button>
       </div>
     `,
-    { goToCreate: () => Router("/create") }
+    { goToCreate: () => Router.push("/create") }
   )
 }
 
@@ -51,12 +51,13 @@ function Create() {
         id: generateId(),
         text: inputValue.trim(),
       }
-      setTodoList([...todoList.value, newTodo])
+
+      todoList.value = [...todoList.value, newTodo]
     }
 
     inputValue = ""
 
-    Router("/")
+    Router.push("/")
   }
 
   return createElement(
@@ -68,7 +69,7 @@ function Create() {
       <button data-event="click" data-eventname="goToHome">Cancel</button>
     </div>
   `,
-    { inputChange, handleCreateTodo, goToHome: () => Router("/") }
+    { inputChange, handleCreateTodo, goToHome: () => Router.push("/") }
   )
 }
 
@@ -93,7 +94,7 @@ function Edit() {
         <button data-event="click" data-eventname="goToHome">Cancel</button>
     </div>
     `,
-    { goToHome: () => Router("/") }
+    { goToHome: () => Router.push("/") }
   )
 }
 
@@ -118,19 +119,19 @@ function EditItem(props) {
       const updatedList = todoList.value.map((todo) =>
         todo.id === updatedTodo.id ? updatedTodo : todo
       )
-      setTodoList(updatedList)
+      todoList.value = updatedList
     }
 
-    Router("/edit")
+    Router.push("/edit")
   }
 
   const deleteTodo = () => {
     const updatedList = todoList.value.filter(
       (todo) => todo.id !== props.todo.id
     )
-    setTodoList(updatedList)
+    todoList.value = updatedList
 
-    Router("/edit")
+    Router.push("/edit")
   }
 
   return createElement(
@@ -139,6 +140,7 @@ function EditItem(props) {
             <input type="text" data-event="input" data-eventname="inputChange" value="${inputValue}" />
             <button data-event="click" data-eventname="updateTodo">Update Todo</button>
             <button data-event="click" data-eventname="deleteTodo">Delete Todo</button>
+            <button data-event="click" data-eventname="replace">Pretend you were never here.</button>
             <button data-event="click" data-eventname="goToHome">Cancel</button>
           </div>
       `,
@@ -146,7 +148,8 @@ function EditItem(props) {
       inputChange,
       updateTodo,
       deleteTodo,
-      goToHome: () => Router("/"),
+      goToHome: () => Router.push("/"),
+      replace: () => Router.replace("/"),
     }
   )
 }

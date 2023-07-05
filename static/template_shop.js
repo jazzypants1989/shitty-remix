@@ -11,6 +11,15 @@ const addToCart = (product) => {
   cartState.value = [...cartState.value, product]
 }
 
+function updateCheckoutState(event, section) {
+  const formData = new FormData(event.target)
+  const data = Object.fromEntries(formData.entries())
+  checkoutState.value = {
+    ...checkoutState.value,
+    [section]: data,
+  }
+}
+
 const Home = () => createElement(`<div><h1>Welcome to Our Shop!</h1></div>`)
 
 const ProductList = () => {
@@ -44,7 +53,7 @@ const Cart = () => {
       .join(
         ""
       )}</ul><button data-event="click" data-eventname="checkout">Checkout</button></div>`,
-    { checkout: () => Router("/checkout") }
+    { checkout: () => Router.push("/checkout") }
   )
 }
 
@@ -61,12 +70,9 @@ const BillingInformation = () => {
     {
       next: (event) => {
         event.preventDefault()
-        const form = event.target
-        checkoutState.value.billingInfo = {
-          name: form.name.value,
-          address: form.address.value,
-        }
-        Router("/checkout/shipping")
+        updateCheckoutState(event, "billingInfo")
+        console.log(checkoutState.value)
+        Router.push("/checkout/shipping")
       },
     }
   )
@@ -84,12 +90,10 @@ const ShippingInformation = () => {
     </div>`,
     {
       next: (event) => {
-        const form = event.target
-        checkoutState.value.shippingInfo = {
-          name: form.name.value,
-          address: form.address.value,
-        }
-        Router("/checkout/review")
+        event.preventDefault()
+        updateCheckoutState(event, "shippingInfo")
+        console.log(checkoutState.value)
+        Router.push("/checkout/review")
       },
     }
   )
@@ -110,7 +114,7 @@ const ReviewOrder = () => {
         .join("")}</ul>
       <button data-event="click" data-eventname="placeOrder">Place Order</button>
     </div>`,
-    { placeOrder: () => Router("/confirmation") }
+    { placeOrder: () => Router.push("/confirmation") }
   )
 }
 
@@ -122,6 +126,12 @@ const OrderConfirmation = () => {
       shippingInfo: { name: "", address: "" },
     }
   }, 10000)
+
+  cartState.subscribe(() => {
+    if (cartState.value.length === 0) {
+      Router.push("/products")
+    }
+  })
 
   return createElement(
     `<div>
