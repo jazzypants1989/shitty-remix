@@ -180,25 +180,37 @@ export const createElement = (template, props, ...children) => {
   if (typeof template !== "string")
     throw new Error("Invalid element template. Expected a string.")
 
-  const element = document.createElement("template")
-  element.innerHTML = template.trim()
-  const fragment = element.content.cloneNode(true)
-  processNode(fragment, props)
+  const createAndSubscribeElement = (template, props, children) => {
+    const element = document.createElement("template")
+    element.innerHTML = template.trim()
+    const fragment = element.content.cloneNode(true)
+    processNode(fragment, props)
 
-  if (props) {
-    const target = fragment.querySelector("*")
+    if (props) {
+      const target = fragment.querySelector("*")
 
-    applyPropsToTarget(target, props)
-    processSlots(fragment, props)
+      applyPropsToTarget(target, props)
+      processSlots(fragment, props)
+    }
+
+    if (children) {
+      const target = fragment.querySelector("*")
+      children.forEach((child) => {
+        const node =
+          typeof child === "string" ? document.createTextNode(child) : child
+        target.appendChild(node)
+      })
+    }
+
+    return fragment
   }
 
-  if (children) {
-    const target = fragment.querySelector("*")
-    children.forEach((child) => {
-      const node =
-        typeof child === "string" ? document.createTextNode(child) : child
-      target.appendChild(node)
-    })
+  const fragment = createAndSubscribeElement(template, props, children)
+
+  const target = fragment.querySelector("*")
+  const stateName = target.getAttribute("data-state")
+  if (stateName && props && props[stateName]) {
+    props[stateName].bindElement(target)
   }
 
   return fragment

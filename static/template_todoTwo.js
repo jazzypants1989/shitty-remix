@@ -27,15 +27,29 @@ const Todo = ({ id, text, completed, todos }) => {
     saveState(todos.value)
   }
 
+  const changeTodoText = (event) => {
+    event.preventDefault()
+    const text = event.target.elements.text.value
+    const updatedTodo = {
+      ...todos.value[id],
+      text,
+    }
+    todos.value = { ...todos.value, [id]: updatedTodo }
+    saveState(todos.value)
+  }
+
   return createElement(
-    `<div>
+    `<li>
+      <form data-event="submit" data-eventname="changeTodoText" />
+        <input type="text" value="${text}" name="text" />
+        <button type="submit">Change Text</button>
+        <label>Completed: </label>
       <input type="checkbox" ${
         completed ? "checked" : ""
-      } data-event="click" data-eventname="toggleTodo" />
-      <input type="text" value="${text}" data-state="todos" />
-      <button data-event="click" data-eventname="toggleTodo">Toggle</button>
-      <button data-event="click" data-eventname="removeTodo">Remove</button>
-    </div>`,
+      } data-event="click" data-eventname="toggleTodo" name="completed" />
+      <button type="button" data-event="click" data-eventname="removeTodo">Remove</button>
+      </form>
+    </li>`,
     {
       id,
       text,
@@ -43,15 +57,16 @@ const Todo = ({ id, text, completed, todos }) => {
       todos,
       toggleTodo,
       removeTodo,
+      changeTodoText,
     }
   )
 }
 
 const TodoList = (todos) => {
-  const todoListContainer = document.createElement("div")
+  const listContainer = document.createElement("ul")
 
   const updateTodoList = () => {
-    todoListContainer.innerHTML = "" // clear existing elements
+    listContainer.innerHTML = "" // clear existing elements
 
     Object.keys(todos.value).forEach((key) => {
       const todoNode = Todo({
@@ -60,7 +75,7 @@ const TodoList = (todos) => {
         completed: todos.value[key].completed,
         todos: todos,
       })
-      todoListContainer.appendChild(todoNode)
+      listContainer.appendChild(todoNode)
     })
   }
 
@@ -72,12 +87,11 @@ const TodoList = (todos) => {
   return createElement(
     `<div>
       <h1>Todo List</h1>
-      <div data-state="todos"></div>
+      <div data-slot="listContainer"></div>
     </div>`,
     {
-      todos,
-    },
-    todoListContainer
+      listContainer,
+    }
   )
 }
 
