@@ -87,17 +87,6 @@ const About = () =>
   </div>
 `)
 
-const Posts = () =>
-  createElement(`
-  <div>
-    <h1>Posts</h1>
-    <p>Discover exciting articles on different subjects.</p>
-    <a href="/posts/categories/1">Technology</a>
-    <a href="/posts/categories/2">Sports</a>
-    <a href="/posts/categories/3">Food</a>
-  </div>
-`)
-
 const UserProfile = (user) => {
   if (!user) {
     return createElement("<p>User not found.</p>")
@@ -113,66 +102,6 @@ const UserProfile = (user) => {
     `)
 }
 
-const UserPosts = (posts) => {
-  const userId = posts[0].userId
-  const user = findUser(userId)
-
-  if (!posts) {
-    return createElement("<p>No posts available for " + user.name + ".</p>")
-  }
-
-  return createElement(
-    `
-    <div>
-      <p>Posts by ${user.name}:</p>
-      <ul>
-        ${posts
-          .map(
-            (post) =>
-              `<li><a href="/posts/details/${post.id}">${post.title}</a></li>`
-          )
-          .join("")}
-      </ul>` +
-      UserFilter(user) +
-      `
-    </div>
-  `
-  )
-}
-
-const PostDetails = (post) => {
-  if (!post) {
-    return createElement("<p>Post not found.</p>")
-  }
-
-  return createElement(`
-      <div>
-        <h2>${post.title}</h2>
-        <p>${post.content}</p>
-        <p>Category: ${
-          postCategories.find((category) => category.id === post.categoryId)
-            .name
-        }</p>
-      </div>
-    `)
-}
-
-const CategoryPosts = (posts) => {
-  if (posts.length === 0) {
-    return createElement("<p>No posts available in this category.</p>")
-  }
-
-  return createElement(`
-      <ul>
-        ${posts
-          .map(
-            (post) =>
-              `<li><a href="/posts/details/${post.id}">${post.title}</a></li>`
-          )
-          .join("")}
-      </ul>
-    `)
-}
 
 const UserCategoryPosts = (props) => {
   const { posts, user, category } = props
@@ -211,6 +140,78 @@ const UserCategoryPosts = (props) => {
   )
 }
 
+const Posts = () =>
+  createElement(`
+  <div>
+    <h1>Posts</h1>
+    <p>Discover exciting articles on different subjects.</p>
+    <a href="/posts/categories/1">Technology</a>
+    <a href="/posts/categories/2">Sports</a>
+    <a href="/posts/categories/3">Food</a>
+  </div>
+`)
+
+const UserPosts = (posts) => {
+  const userId = posts[0].userId
+  const user = findUser(userId)
+
+  if (!posts) {
+    return createElement("<p>No posts available for " + user.name + ".</p>")
+  }
+
+  return createElement(
+    `
+    <div>
+      <p>Posts by ${user.name}:</p>
+      <ul>
+        ${posts
+          .map(
+            (post) =>
+              `<li><a href="/posts/details/${post.id}">${post.title}</a></li>`
+          )
+          .join("")}
+      </ul>` +
+      UserFilter(user) +
+      `
+    </div>
+  `
+  )
+}
+
+const CategoryPosts = (posts) => {
+  if (posts.length === 0) {
+    return createElement("<p>No posts available in this category.</p>")
+  }
+
+  return createElement(`
+      <ul>
+        ${posts
+          .map(
+            (post) =>
+              `<li><a href="/posts/details/${post.id}">${post.title}</a></li>`
+          )
+          .join("")}
+      </ul>
+    `)
+}
+
+const PostDetails = (post) => {
+  if (!post) {
+    return createElement("<p>Post not found.</p>")
+  }
+
+  return createElement(`
+      <div>
+        <h2>${post.title}</h2>
+        <p>${post.content}</p>
+        <p>Category: ${
+          postCategories.find((category) => category.id === post.categoryId)
+            .name
+        }</p>
+      </div>
+    `)
+}
+
 const routes = [
   { path: "/", component: Home },
   { path: "/about", component: About },
@@ -219,30 +220,7 @@ const routes = [
     component: UserProfile,
     loader: (params) => findUser(Number(params.userId)),
   },
-  {
-    path: "/posts",
-    component: Posts,
-  },
-  {
-    path: "/posts/categories",
-    component: () => createElement(""),
-  },
-  {
-    path: "/posts/categories/:categoryId",
-    component: CategoryPosts,
-    loader: (params) =>
-      userPosts.filter((post) => post.categoryId === Number(params.categoryId)),
-  },
-  {
-    path: "/posts/users",
-    component: () => createElement(""),
-  },
-  {
-    path: "/posts/users/:userId",
-    component: UserPosts,
-    loader: (params) =>
-      userPosts.filter((post) => post.userId === Number(params.userId)),
-  },
+  
   {
     path: "/user",
     component: () => createElement(""),
@@ -265,6 +243,30 @@ const routes = [
         Number(params.userId),
         Number(params.categoryId)
       ),
+  },
+  {
+    path: "/posts",
+    component: Posts,
+  },
+  {
+    path: "/posts/users",
+    component: () => createElement(""),
+  },
+  {
+    path: "/posts/users/:userId",
+    component: UserPosts,
+    loader: (params) =>
+      userPosts.filter((post) => post.userId === Number(params.userId)),
+  },
+  {
+    path: "/posts/categories",
+    component: () => createElement(""),
+  },
+  {
+    path: "/posts/categories/:categoryId",
+    component: CategoryPosts,
+    loader: (params) =>
+      userPosts.filter((post) => post.categoryId === Number(params.categoryId)),
   },
   {
     path: "/posts/details",

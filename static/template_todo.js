@@ -74,28 +74,31 @@ function Create() {
 }
 
 function Edit() {
-  const noTodos = todoList.value.length === 0
+  const noTodos = todoList.value.length === 0;
+  
+  const todoItems = noTodos
+    ? "<p>No todos to edit.</p>"
+    : `
+      <p>Select a todo to edit.</p>
+      <ul>
+        ${todoList.value
+          .map(
+            (todo) => `<li><a href="/edit/${todo.id}">${todo.text}</a></li>`
+          )
+          .join("")}
+      </ul>
+    `;
+
   return createElement(
     `
     <div>
-        <h1>Edit Todo</h1>
-        ${
-          noTodos ? "<p>No todos to edit.</p>" : "<p>Select a todo to edit.</p>"
-        }
-        ${noTodos ? "" : "<ul>"}
-        ${todoList.value
-          .map(
-            (todo) => `<li>
-            <a href="/edit/${todo.id}">${todo.text}</a>
-            </li>`
-          )
-          .join("")}
-        ${noTodos ? "" : "</ul>"}
-        <button data-event="click" data-eventname="goToHome">Cancel</button>
+      <h1>Edit Todo</h1>
+      ${todoItems}
+      <button data-event="click" data-eventname="goToHome">Cancel</button>
     </div>
     `,
     { goToHome: () => Router.push("/") }
-  )
+  );
 }
 
 function EditItem(props) {

@@ -1,4 +1,4 @@
-import { createRouter, createElement, useState } from "./template_framework.js"
+import { createRouter, createElement, createComponent, useState } from "./template_framework.js"
 
 const cartState = useState([])
 
@@ -6,10 +6,6 @@ const checkoutState = useState({
   billingInfo: { name: "", address: "" },
   shippingInfo: { name: "", address: "" },
 })
-
-const addToCart = (product) => {
-  cartState.value = [...cartState.value, product]
-}
 
 function updateCheckoutState(event, section) {
   const formData = new FormData(event.target)
@@ -22,26 +18,41 @@ function updateCheckoutState(event, section) {
 
 const Home = () => createElement(`<div><h1>Welcome to Our Shop!</h1></div>`)
 
-const ProductList = () => {
-  const products = getInitialProducts()
-  return createElement(
-    `<div><h1>Products</h1><ul>${products
-      .map(
-        (product) =>
-          `<li><a href="/products/${product.id}">${product.name}</a></li>`
-      )
-      .join("")}</ul></div>`
-  )
-}
+// const ProductList = () => {
+//   const products = getInitialProducts()
+//   return createElement(`${products
+//       .map(
+//         (product) =>
+//           `<li><a href="/products/${product.id}">${product.name}</a></li>`
+//       )
+//       .join("")}</ul></div>`
+//   )
+// }
 
-const ProductDetails = (product) => {
+const ProductList = () => {
+  const initialProducts = getInitialProducts()
+  const products = initialProducts.map((product) => createElement(`<li><a href="/products/${product.id}">${product.name}</a></li>`))
+
+  return createElement(
+    `<ul data-slot="products"></ul>`,
+    {
+      products
+    }
+  );
+};
+
+const Product = (product) => {
   if (!product) {
     return createElement(`<div><h1>Product Not Found</h1></div>`)
   }
 
+  const addToCart = () => {
+    cartState.value = [...cartState.value, product]
+  }
+
   return createElement(
     `<div><h1>${product.name}</h1><p>${product.description}</p><button data-event="click" data-eventname="addToCart">Add to Cart</button></div>`,
-    { addToCart: () => addToCart(product) }
+    { addToCart }
   )
 }
 
@@ -168,41 +179,41 @@ const NotFound = () => createElement(`<div><h1>Page Not Found</h1></div>`)
 const Nav = () => {
   // // Nuclear Option: Refresh the page on every state change.
   // cartState.subscribe(() => Router.refresh())
+  // return createElement(
+  //   `<div><a href="/">Home</a> <a href="/products">Products</a> <a href="/cart">Cart (<span data-state="cartItems">${cartState.value.length}</span>)</a></div>`,
+  // )
 
-  // // Better Option: Update the cart link text on every state change.
-  // let cartItems = cartState.value.length
+  //  Better Option: Create local state for the cart link.
+  // const cartItems = useState(cartState.value.length)
   // cartState.subscribe(() => {
-  //   cartItems = cartState.value.length
-  //   const cartLink = document.querySelector("a[href='/cart']")
-  //   if (cartLink) {
-  //     cartLink.textContent = `Cart (${cartItems})`
-  //   }
+  //   cartItems.value = cartState.value.length
   // })
-  //   return createElement(
-  //  `<div><a href="/">Home</a> <a href="/products">Products</a> <a href="/cart">Cart (${cartItems})</a></div>`
-  //  )
+  // return createElement(
+  //   `<div><a href="/">Home</a> <a href="/products">Products</a> <a href="/cart">Cart (<span data-state="cartItems">${cartItems.value}</span>)</a></div>`,
+  //   {
+  //     cartItems,
+  //   }
+  // )
 
-  // Best Option: Create local state for the cart link.
-  const cartItems = useState(cartState.value.length)
-  cartState.subscribe(() => {
-    cartItems.value = cartState.value.length
-  })
-
-  return createElement(
-    `<div><a href="/">Home</a> <a href="/products">Products</a> <a href="/cart">Cart (<span data-state="cartItems">${cartItems.value}</span>)</a></div>`,
-    {
-      cartItems,
-    }
-  )
-}
+  // Best Option -- use the createComponent function to create a stateful component.
+    const render = () => createElement(`
+  <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/cart">Cart ${cartState.value.length}</a></li>
+      </ul>
+  </nav>`);
+    return createComponent(render, cartState);
+  }
 
 const routes = [
   { path: "/", component: Home },
   { path: "/products", component: ProductList },
   {
     path: "/products/:id",
-    component: ProductDetails,
-    loader: (params) => getProductDetails(params),
+    component: Product,
+    loader: (params) => getProduct(params),
   },
   { path: "/cart", component: Cart },
   { path: "/checkout", component: BillingInformation },
@@ -236,6 +247,6 @@ function getInitialProducts() {
   ]
 }
 
-function getProductDetails(params) {
+function getProduct(params) {
   return getInitialProducts().find((product) => product.id === params.id)
 }

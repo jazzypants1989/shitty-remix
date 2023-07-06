@@ -1,6 +1,5 @@
 import { createElement, useState, createRouter } from "./template_framework.js"
 
-const Navbar = () => createElement(`<nav>Navbar Content</nav>`)
 const PostTitle = (title) => createElement(`<h1>${title}</h1>`)
 const AuthorInfo = (author) => createElement(`<p>Posted by: ${author}</p>`)
 const PostDate = (date) => createElement(`<p>Date: ${date}</p>`)
@@ -76,7 +75,7 @@ const BlogPostPage = (postData) => {
   const { title, author, date, content, likes, comments, relatedPosts } =
     postData
 
-  const component = createElement(
+  return createElement(
     `
         <div>
         <div style="background-color: #aaa; padding: 10px;">
@@ -104,7 +103,6 @@ const BlogPostPage = (postData) => {
       footer: Footer(),
     }
   )
-  return component
 }
 
 const posts = [
@@ -136,28 +134,77 @@ const posts = [
   },
 ]
 
-const Home = () => createElement(`<a href="/posts/1">Blog Post</a>`)
+const Posts = () => createElement(`<a href="/posts/1">Blog Post</a>`)
+
+const UserCard = ({ name, email, avatar }) => {
+  const element = createElement(
+      `<div>
+      <img src="${avatar}" alt="${name}" />
+      <h3>${name}</h3>
+      <p>${email}</p>
+      </div>`
+  );
+
+return element;
+};
+
+const user1 = {
+name: 'John Doe',
+email: 'johndoe@example.com',
+avatar: 'https://picsum.photos/seed/1/200/300',
+};
+
+const user2 = {
+name: 'Jane Smith',
+email: 'janesmith@example.com',
+avatar: 'https://picsum.photos/seed/2/200/300',
+};
+
+const Pictures = () => {
+  const element = createElement(`<div>
+    <div data-slot="slot1"></div>
+    <div data-slot="slot2"></div>
+  </div>`, {
+    slot1: UserCard(user1),
+    slot2: UserCard(user2),
+  });
+
+  return element;
+};
 
 const routes = [
   {
     path: "/",
-    component: Home,
+    component: () => createElement(`<h1>Home</h1>`),
   },
   {
     path: "/posts",
-    component: Home,
+    component: Posts,
   },
   {
     path: "/posts/:id",
     component: BlogPostPage,
     loader: (params) => findPost(params.id),
   },
+  {
+    path: "/pictures",
+    component: Pictures,
+  }
 ]
 
 function findPost(id) {
   const post = posts.find((post) => post.id === id)
   return post
 }
+
+const Navbar = () =>
+  createElement(
+    `<nav>  
+    <a href="/">Home</a>  
+    <a href="/posts">Posts</a>
+    <a href="/pictures">Pictures</a>
+  </nav>`
+  )
 
 const app = document.getElementById("app")
 createRouter(routes, app, Navbar)

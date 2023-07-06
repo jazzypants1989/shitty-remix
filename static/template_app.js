@@ -20,8 +20,7 @@ const Counter = () => {
 
   const decrementTwo = () => (countTwo.value -= 2)
 
-  const render = () =>
-    createElement(
+  return createElement(
       `<div>
         <h2>Counters!!</h2>
         <button data-event="click" data-eventname="decrementOne">-1</button>
@@ -41,8 +40,6 @@ const Counter = () => {
         decrementTwo,
       }
     )
-
-  return render()
 }
 
 const Home = () =>
@@ -50,9 +47,10 @@ const Home = () =>
     `<div id="home">
         <h1>Home</h1>
         <p>Welcome to our website!</p>
-      </div>`,
-    null,
-    Counter()
+        <div data-slot="counter"></div>
+      </div>`, {
+        counter: Counter()
+      }
   )
 
 const Nav = () =>
@@ -109,8 +107,7 @@ const TeamMember = (props) => {
   `)
 }
 
-const SearchComponent = () => {
-  const render = () =>
+const SearchComponent = () => 
     createElement(
       `<div>
         <h2>Search:</h2>
@@ -119,30 +116,21 @@ const SearchComponent = () => {
       </div>`,
       {
         onInput: (event) => {
-          const searchTerm = event.target.value
-          const searchDisplay = document.querySelector("#searchDisplay")
-          if (searchDisplay) {
-            searchDisplay.innerText = searchTerm
-          }
+          document.querySelector("#searchDisplay").innerText = event.target.value
         },
       }
     )
 
-  return render()
-}
-
 const MoodComponent = () => {
-  const mood = useState("happy")
+  const mood = useState("angry af")
 
   mood.subscribe((newMood) => {
     const moodElement = document.querySelector("#moodText")
     if (moodElement) {
       if (newMood === "happy") {
         moodElement.style.color = "green"
-      } else if (newMood === "sad") {
-        moodElement.style.color = "blue"
       } else {
-        moodElement.style.color = "black"
+        moodElement.style.color = "blue"
       }
     }
   })
@@ -151,8 +139,7 @@ const MoodComponent = () => {
 
   const setMoodToSad = () => (mood.value = "sad")
 
-  const render = () =>
-    createElement(
+  return createElement(
       `<div>
         <h2 id="moodText">I'm currently feeling <span data-state="mood">${mood.value}</span></h2>
         <button data-listen>Happy</button>
@@ -169,8 +156,6 @@ const MoodComponent = () => {
         mood,
       }
     )
-
-  return render()
 }
 
 const Example = (props) => {

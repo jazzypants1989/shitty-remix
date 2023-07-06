@@ -1,59 +1,24 @@
 export const useState = (initialState) => {
-  let state = Array.isArray(initialState) ? [...initialState] : initialState
-  const listeners = []
-  const boundElements = new Set()
-
-  const getState = () => {
-    if (Array.isArray(state)) {
-      return [...state]
-    } else if (typeof state === "object") {
-      return { ...state }
-    }
-    return state
+  if (typeof initialState === "function") {
+    initialState = initialState()
   }
+  let state = initialState
+  const listeners = []
 
   const setState = (newValue) => {
-    if (
-      (Array.isArray(state) && !compareArray(state, newValue)) ||
-      (typeof state === "object" && !compareObjects(state, newValue))
-    ) {
-      console.log("Updating state", state, newValue)
-      state = newValue
-      listeners.forEach((listener) => listener(state))
-      boundElements.forEach((element) => {
-        renderArrayOrObject(element, state)
-      })
-    } else if (state !== newValue) {
-      console.log("Updating state", state, newValue)
-      state = newValue
-      listeners.forEach((listener) => listener(state))
-      boundElements.forEach((element) => {
-        element.textContent = state
-      })
-    }
+    state = newValue
+    listeners.forEach((listener) => listener(state))
   }
-
-  // Helper functions to compare arrays and objects.
-  const compareArray = (arr1, arr2) => {
-    return JSON.stringify(arr1) === JSON.stringify(arr2)
-  }
-
-  const compareObjects = (obj1, obj2) => {
-    return JSON.stringify(obj1) === JSON.stringify(obj2)
-  }
-
+  
   return {
     get value() {
-      return getState()
+      return state
     },
     set value(newValue) {
       setState(newValue)
     },
     subscribe: (listener) => {
       listeners.push(listener)
-    },
-    bindElement: (element) => {
-      boundElements.add(element)
     },
   }
 }
@@ -64,13 +29,13 @@ const renderArrayOrObject = (element, value) => {
   const renderNode = (node, parentNode) => {
     if (Array.isArray(node)) {
       node.forEach((item) => {
-        const childNode = document.createElement("div")
+        const childNode = document.createElement("section")
         renderNode(item, childNode)
         parentNode.appendChild(childNode)
       })
     } else if (typeof node === "object") {
       Object.keys(node).forEach((key) => {
-        const childNode = document.createElement("div")
+        const childNode = document.createElement("section")
         childNode.textContent = `${key}:`
         renderNode(node[key], childNode)
         parentNode.appendChild(childNode)
@@ -85,6 +50,7 @@ const renderArrayOrObject = (element, value) => {
 
 const bindEventListener = (element, eventName, handler) => {
   if (element && typeof handler === "function") {
+    element.removeEventListener(eventName, handler)
     element.addEventListener(eventName, (event) => {
       handler(event)
     })
@@ -92,53 +58,50 @@ const bindEventListener = (element, eventName, handler) => {
 }
 
 const bindEventListeners = (element, props) => {
-  if (!props || typeof props !== "object") return
+  if (!props || typeof props !== "object") return;
 
-  const eventElements = element.querySelectorAll("[data-event]")
-
+  const eventElements = element.querySelectorAll("[data-event]");
   eventElements.forEach((eventElement) => {
-    const eventType = eventElement.getAttribute("data-event")
-    const eventHandlerName = eventElement.getAttribute("data-eventname")
+    const eventType = eventElement.getAttribute("data-event");
+    const eventHandlerName = eventElement.getAttribute("data-eventname");
 
-    bindEventListener(eventElement, eventType, props[eventHandlerName])
-  })
-}
+    if (eventHandlerName && props[eventHandlerName]) {
+      bindEventListener(eventElement, eventType, props[eventHandlerName]);
+    }
+  });
 
-const bindEventListenerToAttribute = (
-  target,
-  attribute,
-  eventName,
-  handler
-) => {
-  const eventElements = Array.from(target.querySelectorAll(`*[${attribute}]`))
-  eventElements.forEach((eventElement) => {
-    eventElement.addEventListener(eventName, handler)
-  })
-}
-
-const applyPropsToTarget = (target, props) => {
   Object.keys(props).forEach((key) => {
     if (key.startsWith("on") && typeof props[key] === "function") {
-      const eventName = key.slice(2).toLowerCase()
-      bindEventListenerToAttribute(target, "data-listen", eventName, props[key])
-    } else {
-      target.setAttribute(key, props[key])
+      const eventName = key.slice(2).toLowerCase();
+      const eventElements = Array.from(
+        element.querySelectorAll(`*[data-listen]`)
+      );
+      
+      eventElements.forEach((eventElement) => {
+        bindEventListener(eventElement, eventName, props[key]);
+      });
     }
-  })
-}
+  });
+};
 
 const processNode = (node, props) => {
+  const processState = (node, newState) => {
+    if (Array.isArray(newState) || typeof newState === "object") {
+      console.log("rendering array or object", newState)
+      renderArrayOrObject(node, newState)
+    } else {
+      node.textContent = newState
+    }
+  }
+
   if (node.nodeType === Node.ELEMENT_NODE) {
-    bindEventListeners(node, props)
     const stateName = node.getAttribute("data-state")
     if (node.hasAttribute("data-state") && props[stateName]) {
       const stateValue = props[stateName].value
-      if (Array.isArray(stateValue) || typeof stateValue === "object") {
-        renderArrayOrObject(node, stateValue)
-      } else {
-        node.textContent = stateValue
-      }
-      props[stateName].bindElement(node)
+      processState(node, stateValue)
+      props[stateName].subscribe((newState) => {
+        processState(node, newState)
+      });
     }
   }
 
@@ -148,6 +111,7 @@ const processNode = (node, props) => {
     )
   }
 }
+
 
 const processSlots = (fragment, props) => {
   const slotElements = Array.from(fragment.querySelectorAll("[data-slot]"))
@@ -175,52 +139,43 @@ const processSlots = (fragment, props) => {
   })
 }
 
-export const createElement = (template, props, ...children) => {
+export const createElement = (template, props) => {
   if (typeof template === "function") return template(props)
   if (typeof template !== "string")
     throw new Error("Invalid element template. Expected a string.")
 
-  const createAndSubscribeElement = (template, props, children) => {
     const element = document.createElement("template")
     element.innerHTML = template.trim()
     const fragment = element.content.cloneNode(true)
     processNode(fragment, props)
 
     if (props) {
-      const target = fragment.querySelector("*")
-
-      applyPropsToTarget(target, props)
+      bindEventListeners(fragment, props)
       processSlots(fragment, props)
     }
 
-    if (children) {
-      const target = fragment.querySelector("*")
-      children.forEach((child) => {
-        const node =
-          typeof child === "string" ? document.createTextNode(child) : child
-        target.appendChild(node)
-      })
-    }
-
     return fragment
+}
+
+export const createComponent = (factory, state) => {
+  let rootElement = factory().firstElementChild;
+
+  const updateContainer = () => {
+    const newElement = factory().firstElementChild;
+    rootElement.replaceWith(newElement);
+    rootElement = newElement;
   }
 
-  const fragment = createAndSubscribeElement(template, props, children)
+  state.subscribe(updateContainer);
 
-  const target = fragment.querySelector("*")
-  const stateName = target.getAttribute("data-state")
-  if (stateName && props && props[stateName]) {
-    props[stateName].bindElement(target)
-  }
-
-  return fragment
+  return rootElement;
 }
 
 export const createContainer = (type, factory, state) => {
   const container = document.createElement(type)
 
   const updateContainer = () => {
-    container.innerHTML = "" // Clear existing elements
+    container.innerHTML = ""
     const elements = factory()
     if (Array.isArray(elements)) {
       elements.forEach((element) => container.appendChild(element))
@@ -230,7 +185,6 @@ export const createContainer = (type, factory, state) => {
   }
 
   state.subscribe(updateContainer)
-
   updateContainer()
 
   return container
